@@ -14,7 +14,8 @@ jobs:
     runs-on: windows-latest
     strategy:
       matrix:
-        arch: [x64, Win32]
+        # Win32 removed
+        arch: [x64]
         config: [Release, Debug]
     steps:
       - name: Checkout code

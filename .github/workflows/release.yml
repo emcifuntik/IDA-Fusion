@@ -42,7 +42,8 @@ jobs:
     runs-on: windows-latest
     strategy:
       matrix:
-        arch: [x64, Win32]
+        # Win32 removed
+        arch: [x64]
     steps:
       - name: Checkout code
         uses: actions/checkout@v4
