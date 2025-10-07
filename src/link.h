@@ -3,15 +3,16 @@
 #include <cstdio>
 #include <cstring>
 #include <string>
-#include <windows.h>
 #include <regex>
+
+// Platform-specific headers
+#ifdef __NT__
+  #include <windows.h>
+#endif
 
 // Include typedefs
 #include "typedefs.h"
 
-// IDA sdk specific
-#define __NT__
-#define __X64__
 #include <loader.hpp>
 #include <idp.hpp>
 #include <search.hpp>

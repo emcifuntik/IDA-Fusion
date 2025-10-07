@@ -6,7 +6,15 @@
 [![Release](https://github.com/senator715/IDA-Fusion/actions/workflows/release.yml/badge.svg)](https://github.com/senator715/IDA-Fusion/actions/workflows/release.yml)
 [![License](https://img.shields.io/github/license/senator715/IDA-Fusion)](LICENSE)
 
-IDA-Fusion is an ULTRA Fast Signature scanner & creator for IDA7 & IDA8+, now with cross-platform support for Windows, Linux, and macOS.
+IDA-Fusion is an ULTRA Fast Signature scanner & creator for IDA7 & IDA8+, with full cross-platform support for Windows, Linux, and macOS.
+
+## Platform Support
+
+✅ **Windows** - x64 and x86 (32-bit)  
+✅ **Linux** - x64 and x86 (32-bit)  
+✅ **macOS** - Intel x64 and Apple Silicon (ARM64)
+
+Automated CI/CD builds for all platforms on every commit and release.
 
 # Why IDA-Fusion?
 This project was written due to the lack of stable and working signature scanners/creators available for IDA as a whole, Many of these projects are filled with bugs and create signatures that are not guaranteed to be unique. They are slow and tend to have trouble generating signatures in binaries where parts of the binary have been duplicated to prevent reverse engineering and reliable signature creation.
@@ -42,6 +50,14 @@ Some of the future features planned are:
 # Requirements
 - IDA 7.5 And above
 - Windows, Linux, or macOS
+- **Linux only**: `xclip` or `xsel` for clipboard support (optional but recommended)
+  ```bash
+  # Ubuntu/Debian
+  sudo apt-get install xclip
+  
+  # Fedora/RHEL
+  sudo dnf install xclip
+  ```
 
 # How to install
 
@@ -118,6 +134,8 @@ cmake --build build
 - Clean and build: `.\build.ps1 -Clean` or `./build.sh --clean`
 
 See [BUILD.md](BUILD.md) for detailed build instructions and customization options.
+
+For platform-specific information and cross-platform development details, see [CROSS_PLATFORM.md](CROSS_PLATFORM.md).
 
 ## Legacy Build Methods (Deprecated)
 

@@ -61,11 +61,11 @@ public:
   i8* render(e_signature_style style){
     // Fetch the signature length per byte
     u32 sig_len_per_byte  = get_sig_len_per_byte(style);
-    i32 sig_len           = (bytes.size() * sig_len_per_byte);
+    i32 sig_len           = static_cast<i32>(bytes.size() * sig_len_per_byte);
 
     // Allocate the extra room for the mask
     if(style == SIGNATURE_STYLE_CODE && (n_settings::data & FLAG_INCLUDE_MASK_FOR_CODE_SIGS))
-      sig_len += bytes.size();
+      sig_len += static_cast<i32>(bytes.size());
 
     // Allocate room for the signature
     i8* sig = (i8*)malloc(sig_len);
@@ -124,7 +124,7 @@ public:
     for (u8 byte : bytes){
       crc ^= byte;
       for(u32 i = 0; i < 8; i++)
-        crc = (crc >> 1) ^ (0xEDB88320 & (-(crc & 1)));
+        crc = (crc >> 1) ^ (0xEDB88320 & (~(crc & 1) + 1));
     }
 
     return ~crc;

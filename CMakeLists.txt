@@ -84,6 +84,9 @@ function(add_ida_plugin TARGET_NAME BITNESS)
             /permissive-
             $<$<CONFIG:Release>:/O2 /GL>
         )
+        target_compile_definitions(${TARGET_NAME} PRIVATE
+            _SILENCE_CXX20_IS_POD_DEPRECATION_WARNING
+        )
         target_link_options(${TARGET_NAME} PRIVATE
             $<$<CONFIG:Release>:/LTCG>
             /EXPORT:PLUGIN
