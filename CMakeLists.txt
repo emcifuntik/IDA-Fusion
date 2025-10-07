@@ -99,9 +99,6 @@ function(add_ida_plugin TARGET_NAME BITNESS)
             -fpermissive
             $<$<CONFIG:Release>:-O3>
         )
-        target_link_options(${TARGET_NAME} PRIVATE
-            -Wl,--exclude-libs,ALL
-        )
         
         if(UNIX AND NOT APPLE)
             target_compile_options(${TARGET_NAME} PRIVATE -fPIC)
