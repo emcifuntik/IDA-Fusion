@@ -1,3 +1,52 @@
+# Build directories
+.vs/
+out/
+obj/
+build/
+intermediaries/
+
+# Compiled binaries
 *.dll
+*.so
+*.dylib
+*.exe
+*.o
+*.obj
+*.lib
+*.a
+
+# IDE files
+.vscode/
+*.user
+*.suo
+*.sdf
+*.opensdf
+*.vcxproj.user
+
+# Debug files
+*.pdb
+*.ilk
+*.idb
+*.ipdb
+*.iobj
+
+# Archives
 *.zip
-sdk
+
+# CMake
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+install_manifest.txt
+*.cmake
+!CMakeLists.txt
+
+# OS files
+.DS_Store
+Thumbs.db
+*.swp
+*.swo
+*~
+
+# Logs
+*.log

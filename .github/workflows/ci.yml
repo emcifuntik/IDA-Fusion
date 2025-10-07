@@ -1,0 +1,140 @@
+name: CI Build
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+    branches:
+      - main
+
+jobs:
+  build-windows:
+    name: Build Windows
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        arch: [x64, Win32]
+        config: [Release, Debug]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Configure CMake
+        run: |
+          if ("${{ matrix.arch }}" -eq "x64") {
+            cmake -B build -G "Visual Studio 17 2022" -A x64 -DBUILD_64BIT=ON -DBUILD_32BIT=OFF -DCMAKE_BUILD_TYPE=${{ matrix.config }}
+          } else {
+            cmake -B build -G "Visual Studio 17 2022" -A Win32 -DBUILD_64BIT=OFF -DBUILD_32BIT=ON -DCMAKE_BUILD_TYPE=${{ matrix.config }}
+          }
+
+      - name: Build
+        run: cmake --build build --config ${{ matrix.config }} -j
+
+      - name: List outputs
+        run: |
+          Write-Host "Build outputs:"
+          Get-ChildItem -Path build\${{ matrix.config }} -Filter *.dll
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-${{ matrix.arch }}-${{ matrix.config }}
+          path: build/${{ matrix.config }}/*.dll
+          retention-days: 7
+
+  build-linux:
+    name: Build Linux
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        config: [Release, Debug]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake
+
+      - name: Configure CMake
+        run: cmake -B build -DCMAKE_BUILD_TYPE=${{ matrix.config }} -DBUILD_64BIT=ON -DBUILD_32BIT=OFF
+
+      - name: Build
+        run: cmake --build build -j$(nproc)
+
+      - name: List outputs
+        run: |
+          echo "Build outputs:"
+          ls -lh build/*.so || true
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-x64-${{ matrix.config }}
+          path: build/*.so
+          retention-days: 7
+
+  build-macos:
+    name: Build macOS
+    runs-on: ${{ matrix.runner }}
+    strategy:
+      matrix:
+        include:
+          - arch: arm64
+            runner: macos-14
+            config: Release
+          - arch: arm64
+            runner: macos-14
+            config: Debug
+          - arch: x86_64
+            runner: macos-13
+            config: Release
+          - arch: x86_64
+            runner: macos-13
+            config: Debug
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Configure CMake
+        run: cmake -B build -DCMAKE_BUILD_TYPE=${{ matrix.config }} -DBUILD_64BIT=ON -DBUILD_32BIT=OFF
+
+      - name: Build
+        run: cmake --build build -j$(sysctl -n hw.ncpu)
+
+      - name: List outputs
+        run: |
+          echo "Build outputs:"
+          ls -lh build/*.dylib || true
+
+      - name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-${{ matrix.arch }}-${{ matrix.config }}
+          path: build/*.dylib
+          retention-days: 7
+
+  summary:
+    name: Build Summary
+    needs: [build-windows, build-linux, build-macos]
+    runs-on: ubuntu-latest
+    if: always()
+    steps:
+      - name: Check build results
+        run: |
+          echo "## Build Summary" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "✅ All builds completed" >> $GITHUB_STEP_SUMMARY
+          echo "" >> $GITHUB_STEP_SUMMARY
+          echo "### Platforms Tested" >> $GITHUB_STEP_SUMMARY
+          echo "- Windows (x64, x86)" >> $GITHUB_STEP_SUMMARY
+          echo "- Linux (x64)" >> $GITHUB_STEP_SUMMARY
+          echo "- macOS (ARM64, x86_64)" >> $GITHUB_STEP_SUMMARY

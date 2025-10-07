@@ -28,7 +28,7 @@ namespace n_signature{
       signature = std::regex_replace(signature, std::regex("00"), "?");
 
       // Remove first space if there is one
-      if(!signature.empty() && signature[0] == ' ')
+      if(signature[0] == ' ')
         signature.erase(0, 1);
     }
     
@@ -43,17 +43,10 @@ namespace n_signature{
 
     ea_t addr = (find_settings.start_at_addr > 0 ? find_settings.start_at_addr : ea_min) - 1;
 
-#if IDA_SDK_VERSION >= 900
     compiled_binpat_vec_t sig_data{};
     parse_binpat_str(&sig_data, addr, signature.c_str(), 16);
-#endif
-
     while(true){
-#if IDA_SDK_VERSION >= 900
-      addr = bin_search3(addr + 1, ea_max, sig_data, BIN_SEARCH_NOCASE | BIN_SEARCH_FORWARD);
-#else
-      addr = find_binary(addr + 1, ea_max, signature.c_str(), 16, SEARCH_DOWN);
-#endif
+      addr = bin_search(addr + 1, ea_max, sig_data, BIN_SEARCH_NOCASE | BIN_SEARCH_FORWARD);
 
       if(addr == 0 || addr == BADADDR)
         break;
@@ -166,14 +159,7 @@ namespace n_signature{
 
         // Attempt to search for this signature, if nothing is found then we have a unique signature
         {
-          i8* ida_sig = signature_generator.render(SIGNATURE_STYLE_IDA);
-          if(ida_sig == nullptr){
-            error("[Fusion] fatal error rendering signature (1)\n");
-            break;
-          }
-
-          std::vector<ea_t> search_result = find(ida_sig, {true, true, target_addr, last_found_address, false});
-          free(ida_sig);
+          std::vector<ea_t> search_result = find(signature_generator.render(SIGNATURE_STYLE_IDA), {true, true, target_addr, last_found_address, false});
           if(search_result.empty())
             break;
 
@@ -202,11 +188,6 @@ namespace n_signature{
 
       // Create a render of the signature in the selected style
       i8* signature = signature_generator.render(style);
-
-      if(signature == nullptr){
-        error("[Fusion] fatal error rendering signature (2)\n");
-        return;
-      }
 
       // Display
       msg("[Fusion] %s\n", signature);

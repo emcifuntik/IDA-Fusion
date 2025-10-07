@@ -1,0 +1,178 @@
+name: Build and Release
+
+on:
+  push:
+    tags:
+      - 'v*.*.*'
+      - 'v*.*.*-*'
+
+permissions:
+  contents: write
+
+jobs:
+  create-release:
+    name: Create Release
+    runs-on: ubuntu-latest
+    outputs:
+      upload_url: ${{ steps.create_release.outputs.upload_url }}
+      version: ${{ steps.get_version.outputs.version }}
+    steps:
+      - name: Get version from tag
+        id: get_version
+        run: echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Create Release
+        id: create_release
+        uses: actions/create-release@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          tag_name: ${{ github.ref }}
+          release_name: IDA-Fusion ${{ steps.get_version.outputs.version }}
+          draft: false
+          prerelease: ${{ contains(github.ref, '-alpha') || contains(github.ref, '-beta') || contains(github.ref, '-rc') }}
+          body: |
+            ## IDA-Fusion ${{ steps.get_version.outputs.version }}
+
+            See [README.md](https://github.com/${{ github.repository }}/blob/main/README.md) for more information.
+
+  build-windows:
+    name: Build Windows
+    needs: create-release
+    runs-on: windows-latest
+    strategy:
+      matrix:
+        arch: [x64, Win32]
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+
+      - name: Configure CMake
+        run: |
+          if ("${{ matrix.arch }}" -eq "x64") {
+            cmake -B build -G "Visual Studio 17 2022" -A x64 -DBUILD_64BIT=ON -DBUILD_32BIT=OFF -DCMAKE_BUILD_TYPE=Release
+          } else {
+            cmake -B build -G "Visual Studio 17 2022" -A Win32 -DBUILD_64BIT=OFF -DBUILD_32BIT=ON -DCMAKE_BUILD_TYPE=Release
+          }
+
+      - name: Build
+        run: cmake --build build --config Release -j
+
+      - name: Determine output filename
+        id: filename
+        run: |
+          if ("${{ matrix.arch }}" -eq "x64") {
+            echo "filename=fusion64.dll" >> $env:GITHUB_OUTPUT
+            echo "asset_name=fusion64-windows-x64.dll" >> $env:GITHUB_OUTPUT
+          } else {
+            echo "filename=fusion.dll" >> $env:GITHUB_OUTPUT
+            echo "asset_name=fusion-windows-x86.dll" >> $env:GITHUB_OUTPUT
+          }
+
+      - name: Upload Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: build/Release/${{ steps.filename.outputs.filename }}
+          asset_name: ${{ steps.filename.outputs.asset_name }}
+          asset_content_type: application/octet-stream
+
+  build-linux:
+    name: Build Linux
+    needs: create-release
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y build-essential cmake
+
+      - name: Configure CMake
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_64BIT=ON -DBUILD_32BIT=OFF
+
+      - name: Build
+        run: cmake --build build -j$(nproc)
+
+      - name: Upload Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: build/fusion64.so
+          asset_name: fusion64-linux-x64.so
+          asset_content_type: application/octet-stream
+
+  build-macos:
+    name: Build macOS
+    needs: create-release
+    strategy:
+      matrix:
+        include:
+          - arch: arm64
+            runner: macos-15
+          - arch: x86_64
+            runner: macos-15
+    runs-on: ${{ matrix.runner }}
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Configure CMake
+        run: cmake -B build -DCMAKE_BUILD_TYPE=Release -DBUILD_64BIT=ON -DBUILD_32BIT=OFF
+
+      - name: Build
+        run: cmake --build build -j$(sysctl -n hw.ncpu)
+
+      - name: Upload Release Asset
+        uses: actions/upload-release-asset@v1
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          upload_url: ${{ needs.create-release.outputs.upload_url }}
+          asset_path: build/fusion64.dylib
+          asset_name: fusion64-macos-${{ matrix.arch }}.dylib
+          asset_content_type: application/octet-stream
+
+  finalize-release:
+    name: Finalize Release
+    needs: [create-release, build-windows, build-linux, build-macos]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Update release description
+        uses: actions/github-script@v7
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const tag = context.ref.replace('refs/tags/', '');
+            const releases = await github.rest.repos.listReleases({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+            });
+            const release = releases.data.find(r => r.tag_name === tag);
+            
+            if (release) {
+              await github.rest.repos.updateRelease({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                release_id: release.id,
+                body: release.body + '\n\n✅ All builds completed successfully!'
+              });
+            }
