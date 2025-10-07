@@ -45,7 +45,7 @@ namespace n_utils{
     // macOS: Use pbcopy
     FILE* pipe = popen("pbcopy", "w");
     if(pipe){
-      fwrite(buffer, 1, strlen(buffer), pipe);
+      qfwrite(pipe, buffer, strlen(buffer));
       pclose(pipe);
     }
 #endif

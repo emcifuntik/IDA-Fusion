@@ -52,6 +52,7 @@ function(add_ida_plugin TARGET_NAME BITNESS)
         set(ARCH_SUFFIX "")
         set(EA64_FLAG "")
         set(LIB_DIR "${IDA_SDK}/lib/x64_${IDA_PLATFORM}_${IDA_COMPILER}_32")
+        add_definitions(-D__X86__)
     endif()
 
     set(SOURCE_FILES src/main.cpp)
@@ -98,9 +99,6 @@ function(add_ida_plugin TARGET_NAME BITNESS)
             -Wno-unused-parameter
             -fpermissive
             $<$<CONFIG:Release>:-O3>
-        )
-        target_link_options(${TARGET_NAME} PRIVATE
-            -Wl,--exclude-libs,ALL
         )
         
         if(UNIX AND NOT APPLE)
